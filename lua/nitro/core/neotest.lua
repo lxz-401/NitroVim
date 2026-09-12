@@ -111,19 +111,19 @@ function M.setup()
     },
   })
 
-  vim.keymap.set("n", "<leader>tn", function()
+  vim.keymap.set("n", "<leader>Tn", function()
     neotest.run.run()
   end, { desc = "Run nearest test" })
 
-  vim.keymap.set("n", "<leader>tf", function()
+  vim.keymap.set("n", "<leader>Tf", function()
     neotest.run.run(vim.fn.expand("%"))
   end, { desc = "Run all tests in file" })
 
-  vim.keymap.set("n", "<leader>ts", function()
+  vim.keymap.set("n", "<leader>Ts", function()
     neotest.summary.toggle()
   end, { desc = "Toggle summary" })
 
-  vim.keymap.set("n", "<leader>to", function()
+  vim.keymap.set("n", "<leader>To", function()
     neotest.output.open({ enter = true })
   end, { desc = "Open test output" })
 end

@@ -1,4 +1,15 @@
-require("mason").setup()
+-- ===========================================================================
+--  Mason: LSP serverlarni o'rnatish
+-- ===========================================================================
+
+require("mason").setup({
+  registries = {
+    "github:Crashdummyy/mason-registry",
+    "github:mason-org/mason-registry",
+  },
+  max_concurrent_installers = 4,
+  ui = { border = "rounded" },
+})
 
 require("mason-lspconfig").setup({
   ensure_installed = {
@@ -11,9 +22,10 @@ require("mason-lspconfig").setup({
     "emmet_language_server",
     "jsonls",
     "pyright",
-    "rust_analyzer",
+    "jdtls",
     "clangd",
-    "fsautocomplete"
   },
-  automatic_installation = true,
+  -- false: serverlarni faqat lsp.lua dagi ro'yxat yoqadi.
+  -- true bo'lsa mason har qanday o'rnatilgan serverni ham yoqib yuboradi.
+  automatic_enable = false,
 })

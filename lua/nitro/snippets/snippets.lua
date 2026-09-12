@@ -1,6 +1,8 @@
 local ls = require("luasnip")
 
-require("luasnip.loaders.from_vscode").lazy_load()
+require("luasnip.loaders.from_vscode").lazy_load({
+	paths = { vim.fn.stdpath("data") .. "/lazy/friendly-snippets" },
+})
 
 ls.filetype_extend("scss", { "css" })
 ls.filetype_extend("sass", { "css" })

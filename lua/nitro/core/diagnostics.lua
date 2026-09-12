@@ -1,5 +1,7 @@
+local uz = require("nitro.core.diagnostics_uz")
+
 vim.diagnostic.config({
-  virtual_text = { prefix = "●", spacing = 2 },
+  virtual_text = { prefix = "●", spacing = 2, format = uz.format },
   signs = {
     text = {
       [vim.diagnostic.severity.ERROR] = " ",
@@ -25,5 +27,6 @@ vim.diagnostic.config({
     source = "always",
     header = "",
     prefix = "",
+    format = uz.format,
   },
 })

@@ -7,7 +7,9 @@ require('lualine').setup {
     disabled_filetypes = { statusline = {}, winbar = {} },
     always_divide_middle = true,
     globalstatus = true,
-    refresh = { statusline = 1000, tabline = 100, winbar = 100 },
+    -- 100ms -> 1000ms: 'branch' va 'diff' komponentlari git ma'lumotini
+    -- so'raydi; sekundiga 10 marta so'rash Windows'da qimmat.
+    refresh = { statusline = 1000, tabline = 1000, winbar = 1000 },
   },
   sections = {
     lualine_a = {
@@ -39,12 +41,19 @@ require('lualine').setup {
           if vim.bo.buftype == 'terminal' then
             return 'Terminal'
           end
+          local ok, state = pcall(require, 'nitro-ai.state')
+          if ok and state and state.ui and state.ui.tab and vim.api.nvim_tabpage_is_valid(state.ui.tab) and vim.api.nvim_get_current_tabpage() == state.ui.tab then
+            local prov_cfg = require('nitro-ai.config').get_current_provider_config()
+            local stats = state.get_context_stats()
+            local prov_name = (require('nitro-ai.config').options.provider or 'bionic'):upper()
+            return string.format("🤖 Model: %s (%s)  📊 Kontekst: %s", prov_cfg.model or "", prov_name, stats.formatted)
+          end
           return name
         end,
       },
     },
+    -- 'filesize' olib tashlandi: har redraw'da diskdan fayl hajmini o'qirdi
     lualine_x = {
-      'filesize',
       'encoding',
       'fileformat',
       'filetype',

@@ -1,5 +1,16 @@
+-- ===========================================================================
+--  Plugin ro'yxati (lazy.nvim)
+--
+--  Qoida: plugin faqat KERAK bo'lganda yuklanadi.
+--    event = ...  -> hodisa yuz berganda
+--    ft    = ...  -> shu turdagi fayl ochilganda
+--    cmd   = ...  -> shu buyruq chaqirilganda
+--    keys  = ...  -> shu tugma bosilganda
+--    lazy  = true -> require() qilinganda (nitro/* modullari o'zi chaqiradi)
+-- ===========================================================================
+
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
+if not (vim.uv or vim.loop).fs_stat(lazypath) then
   vim.fn.system({
     "git", "clone", "--filter=blob:none",
     "https://github.com/folke/lazy.nvim",
@@ -11,34 +22,42 @@ vim.opt.rtp:prepend(lazypath)
 local dap_config = require("nitro.core.dap")
 local neotest_config = require("nitro.core.neotest")
 
+-- Web fayl turlari (colorizer / autotag uchun)
+local web_ft = {
+  "html", "css", "scss", "sass", "less",
+  "javascript", "javascriptreact", "typescript", "typescriptreact",
+  "vue", "svelte", "astro", "xml", "php", "markdown",
+}
+
 require("lazy").setup({
 
   -- File Explorer
-  { "nvim-tree/nvim-tree.lua", dependencies = { "nvim-tree/nvim-web-devicons" } },
+  { "nvim-tree/nvim-tree.lua",  dependencies = { "nvim-tree/nvim-web-devicons" }, lazy = true },
+  { "nvim-tree/nvim-web-devicons", lazy = true },
 
-  -- Themes
-  { "navarasu/onedark.nvim" },
-  { "folke/tokyonight.nvim" },
-  { "tanvirtin/monokai.nvim" },
-  { "ellisonleao/gruvbox.nvim" },
-  { "catppuccin/nvim",         name = "catppuccin" },
-  { "Mofiqul/dracula.nvim" },
-  { "shaunsingh/nord.nvim" },
-  { "sainnhe/everforest" },
-  { "rose-pine/neovim",        name = "rose-pine" },
+  -- Themes: faqat tanlangani yuklanadi (colorschemes.lua require qiladi)
+  { "navarasu/onedark.nvim",    lazy = true },
+  { "folke/tokyonight.nvim",    lazy = true },
+  { "tanvirtin/monokai.nvim",   lazy = true },
+  { "ellisonleao/gruvbox.nvim", lazy = true },
+  { "catppuccin/nvim",          name = "catppuccin", lazy = true },
+  { "Mofiqul/dracula.nvim",     lazy = true },
+  { "shaunsingh/nord.nvim",     lazy = true },
+  { "sainnhe/everforest",       lazy = true },
+  { "rose-pine/neovim",         name = "rose-pine",  lazy = true },
+
   {
     "akinsho/bufferline.nvim",
     version = "*",
+    lazy = true,
     dependencies = { "nvim-tree/nvim-web-devicons" },
   },
 
-  -- Statusline
+  -- Statusline (statusline.lua o'zi sozlaydi)
   {
     "nvim-lualine/lualine.nvim",
+    lazy = true,
     dependencies = { "nvim-tree/nvim-web-devicons" },
-    config = function()
-      require("lualine").setup()
-    end,
   },
 
   -- Dashboard
@@ -54,18 +73,38 @@ require("lazy").setup({
   -- Telescope
   {
     "nvim-telescope/telescope.nvim",
+    lazy = true,
     dependencies = { "nvim-lua/plenary.nvim" },
   },
+  { "nvim-lua/plenary.nvim", lazy = true },
 
   -- Terminal
   {
     "akinsho/toggleterm.nvim",
     version = "*",
+    lazy = true,
+    cmd = { "ToggleTerm", "TermExec" },
+    -- Faqat plugin O'ZI o'rnatadigan tugmalar bu yerda turishi kerak.
+    -- <leader>t keymaps.lua da va :ToggleTerm buyrug'ini chaqiradi ->
+    -- plugin yuqoridagi `cmd` orqali yuklanadi.
+    keys = { [[<c-\>]], "<leader>lg" },
     config = function()
       local ok, toggleterm = pcall(require, "toggleterm")
       if not ok then
         vim.notify("ToggleTerm not found!", vim.log.levels.WARN)
         return
+      end
+
+      -- Terminal oynasi uchun PowerShell.
+      -- Global shell ham PowerShell (options.lua ga qarang), lekin bu yerda
+      -- aniq ko'rsatamiz: -NoLogo ochilishdagi keraksiz matnni olib tashlaydi.
+      local function terminal_shell()
+        if vim.fn.executable("pwsh") == 1 then
+          return "pwsh -NoLogo"       -- PowerShell 7+
+        elseif vim.fn.executable("powershell") == 1 then
+          return "powershell -NoLogo" -- Windows PowerShell 5
+        end
+        return vim.o.shell
       end
 
       toggleterm.setup({
@@ -79,7 +118,7 @@ require("lazy").setup({
         persist_size = true,
         direction = "float",
         close_on_exit = true,
-        shell = vim.o.shell,
+        shell = terminal_shell(),
         float_opts = {
           border = "curved",
           width = math.floor(vim.o.columns * 0.9),
@@ -108,6 +147,10 @@ require("lazy").setup({
       })
 
       function _LAZYGIT_TOGGLE()
+        if vim.fn.executable("lazygit") ~= 1 then
+          vim.notify("lazygit o'rnatilmagan: winget install JesseDuffield.lazygit", vim.log.levels.WARN)
+          return
+        end
         lazygit:toggle()
       end
 
@@ -117,100 +160,90 @@ require("lazy").setup({
   },
 
   -- LSP + Mason
-  {
-    "mason-org/mason-lspconfig.nvim",
-    "neovim/nvim-lspconfig",
-    "b0o/schemastore.nvim",
-  },
-  {
-    "mason-org/mason.nvim",
-    config = function()
-      require('mason').setup({
-        registries = {
-          'github:Crashdummyy/mason-registry',
-          'github:mason-org/mason-registry',
-        },
-      })
-    end
-  },
+  -- lazy = false MAJBURIY: vim.lsp.enable() server sozlamalarini
+  -- nvim-lspconfig ning lsp/ papkasidan runtimepath orqali topadi.
+  -- Lazy qilinsa hech bir til serveri ishga tushmaydi.
+  { "neovim/nvim-lspconfig",          lazy = false },
+  { "mason-org/mason-lspconfig.nvim", lazy = true },
+  { "b0o/schemastore.nvim",           lazy = true },
+  { "mason-org/mason.nvim",           lazy = true, cmd = { "Mason", "MasonInstall", "MasonUninstall", "MasonUpdate", "MasonLog" } },
 
   -- Completion (nvim-cmp)
-  { "hrsh7th/nvim-cmp" },
-  { "hrsh7th/cmp-nvim-lsp" },
-  { "hrsh7th/cmp-buffer" },
-  { "hrsh7th/cmp-path" },
-  { "hrsh7th/cmp-cmdline" },
-  { "saadparwaiz1/cmp_luasnip" },
+  -- Manbalar (buffer/path/cmdline/luasnip) o'zini cmp'ga ro'yxatdan o'tkazadi,
+  -- shuning uchun ular cmp bilan BIRGA yuklanishi shart -> dependencies.
+  {
+    "hrsh7th/nvim-cmp",
+    lazy = true,
+    dependencies = {
+      "hrsh7th/cmp-nvim-lsp",
+      "hrsh7th/cmp-buffer",
+      "hrsh7th/cmp-path",
+      "hrsh7th/cmp-cmdline",
+      "saadparwaiz1/cmp_luasnip",
+      "L3MON4D3/LuaSnip",
+    },
+  },
+  { "hrsh7th/cmp-nvim-lsp",     lazy = true },
+  { "hrsh7th/cmp-buffer",       lazy = true },
+  { "hrsh7th/cmp-path",         lazy = true },
+  { "hrsh7th/cmp-cmdline",      lazy = true },
+  { "saadparwaiz1/cmp_luasnip", lazy = true },
+  { "onsails/lspkind.nvim",     lazy = true },
 
   -- Debugging
   {
     "mfussenegger/nvim-dap",
+    lazy = true,
     config = dap_config.setup_dap,
     keys = dap_config.keys,
   },
   {
     "rcarriga/nvim-dap-ui",
+    lazy = true,
     dependencies = {
       "mfussenegger/nvim-dap",
       "nvim-neotest/nvim-nio",
     },
     config = dap_config.setup_dapui,
   },
+  { "nvim-neotest/nvim-nio", lazy = true },
 
   -- Snippets
-  { "L3MON4D3/LuaSnip" },
-  { "rafamadriz/friendly-snippets" },
+  -- friendly-snippets LuaSnip'ga bog'landi: aks holda uni hech kim require
+  -- qilmaydi va tayyor snippet'lar runtimepath'ga tushmaydi.
+  {
+    "L3MON4D3/LuaSnip",
+    lazy = true,
+    dependencies = { "rafamadriz/friendly-snippets" },
+  },
+  { "rafamadriz/friendly-snippets", lazy = true },
 
   -- Treesitter
-  { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
-
-  -- CSS utilities
+  -- MUHIM: "master" branch. "main" branch tree-sitter-cli talab qiladi va
+  -- eski API (highlight/indent) ni umuman o'qimaydi -> highlight ishlamaydi.
   {
-    "catgoose/nvim-colorizer.lua",
-    event = "BufReadPre",
-    opts = {
-      options = {},
-      filetypes = {
-        "*",
-        "!NvimTree",
-        "!dashboard",
-        "!alpha",
-        "!lazy",
-        "!TelescopePrompt",
-        "!neo-tree",
-      },
-    },
+    "nvim-treesitter/nvim-treesitter",
+    branch = "master",
+    build = ":TSUpdate",
+    lazy = true,
   },
 
-  -- Auto Save
+  -- Ranglarni ko'rsatish (#fff -> rangli). Faqat web fayllarda.
   {
-    "pocco81/auto-save.nvim",
-    config = function()
-      require("auto-save").setup {
-        enabled = true,
-        execution_message = {
-          message = function() return ("AutoSave: saved at " .. vim.fn.strftime("%H:%M:%S")) end,
-          dim = 0.18,
-          cleaning_interval = 1250,
-        },
-        trigger_events = { "InsertLeave", "TextChanged" },
-        conditions = {
-          exists = true,
-          filename_is_not = {},
-          filetype_is_not = {},
-          modifiable = true,
-        },
-        write_all_buffers = false,
-        debounce_delay = 135,
-      }
-    end,
+    "catgoose/nvim-colorizer.lua",
+    ft = web_ft,
+    opts = {
+      filetypes = web_ft,
+      user_default_options = { names = false },
+    },
   },
 
   -- TODO COMMENTS
   {
     "folke/todo-comments.nvim",
+    event = { "BufReadPost", "BufNewFile" },
     dependencies = { "nvim-lua/plenary.nvim" },
-    opts = {}
+    opts = {},
   },
 
   -- Auto Pairs
@@ -223,10 +256,7 @@ require("lazy").setup({
   },
 
   -- Transparent
-  {
-    "xiyaowong/transparent.nvim",
-    lazy = false,
-  },
+  { "xiyaowong/transparent.nvim", lazy = true },
 
   -- Gitsigns
   {
@@ -236,18 +266,23 @@ require("lazy").setup({
       signs = {
         add = { text = "▎" },
         change = { text = "▎" },
-        delete = { text = "" },
-        topdelete = { text = "" },
+        delete = { text = "" },
+        topdelete = { text = "" },
         changedelete = { text = "▎" },
         untracked = { text = "▎" },
       },
-      current_line_blame = true,
+      -- O'CHIRILDI: har kursor to'xtaganda `git blame` protsessi ishga tushardi.
+      -- Windows'da bu eng ko'p sezilgan lag manbalaridan biri.
+      -- Kerak bo'lganda <leader>gb bilan yoqing.
+      current_line_blame = false,
       current_line_blame_opts = {
         virt_text = true,
         virt_text_pos = "eol",
         delay = 500,
         ignore_whitespace = false,
       },
+      max_file_length = 10000, -- 10k qatordan uzun faylda o'chadi
+      update_debounce = 200,
       on_attach = function(bufnr)
         local gs = package.loaded.gitsigns
         local function map(mode, lhs, rhs, desc)
@@ -256,6 +291,9 @@ require("lazy").setup({
 
         map("n", "]h", function() gs.nav_hunk("next") end, "Next Hunk")
         map("n", "[h", function() gs.nav_hunk("prev") end, "Prev Hunk")
+        map("n", "<leader>gb", gs.toggle_current_line_blame, "Git blame (yoq/o'chir)")
+        map("n", "<leader>gp", gs.preview_hunk, "Hunk'ni ko'rish")
+        map("n", "<leader>gr", gs.reset_hunk, "Hunk'ni qaytarish")
       end,
     },
   },
@@ -268,12 +306,17 @@ require("lazy").setup({
     dependencies = {
       "MunifTanjim/nui.nvim",
       "rcarriga/nvim-notify",
-    }
+    },
   },
+  { "MunifTanjim/nui.nvim",   lazy = true },
+  { "rcarriga/nvim-notify",   lazy = true },
 
-  -- Smear Cursor
+  -- Smear Cursor (kursor animatsiyasi)
+  -- time_interval = 5 -> sekundiga 200 marta qayta chizish. Windows terminalida
+  -- bu juda qimmat. 17 = ~60 FPS, ko'zga bir xil, CPU esa ancha kam.
   {
     "sphamba/smear-cursor.nvim",
+    event = "VeryLazy",
     opts = {
       stiffness = 0.8,
       trailing_stiffness = 0.6,
@@ -282,7 +325,10 @@ require("lazy").setup({
       damping = 0.95,
       damping_insert_mode = 0.95,
       distance_stop_animating = 0.5,
-      time_interval = 5
+      time_interval = 17,
+      smear_between_buffers = false,
+      smear_between_neighbor_lines = false,
+      scroll_buffer_space = false,
     },
   },
 
@@ -293,15 +339,16 @@ require("lazy").setup({
     event = "VeryLazy",
     config = function()
       require("nvim-surround").setup({})
-    end
+    end,
   },
 
-  -- Auto Tag
+  -- Auto Tag (<div> yozilganda </div> qo'shadi)
   {
     "windwp/nvim-ts-autotag",
+    ft = web_ft,
     config = function()
-      require('nvim-ts-autotag').setup()
-    end
+      require("nvim-ts-autotag").setup()
+    end,
   },
 
   -- Trouble
@@ -311,21 +358,24 @@ require("lazy").setup({
     cmd = "Trouble",
   },
 
-  -- C#
-  { "hrsh7th/vim-vsnip" },
-  { "jlcrochet/vim-razor", },
+  -- C# / .NET
+  { "hrsh7th/vim-vsnip",   ft = { "cs", "fsharp", "razor" } },
+  { "jlcrochet/vim-razor", ft = { "razor", "cshtml" } },
   {
     "GustavEikaas/easy-dotnet.nvim",
-    dependencies = { "nvim-lua/plenary.nvim", 'folke/snacks.nvim', },
+    ft = { "cs", "fsharp", "razor" },
+    cmd = "Dotnet",
+    dependencies = { "nvim-lua/plenary.nvim", "folke/snacks.nvim" },
     config = function()
       require("easy-dotnet").setup()
-    end
+    end,
   },
+  { "folke/snacks.nvim", lazy = true },
 
   -- Project
   {
     "ahmedkhalf/project.nvim",
-    event = "VimEnter",
+    event = "VeryLazy",
     config = function()
       require("project_nvim").setup({
         manual_mode = true,
@@ -339,6 +389,8 @@ require("lazy").setup({
           "Makefile",
           "package.json",
           "pyproject.toml",
+          "pom.xml",
+          "build.gradle",
         },
         ignore_lsp = {},
         exclude_dirs = {},
@@ -348,7 +400,9 @@ require("lazy").setup({
         datapath = vim.fn.stdpath("data"),
       })
 
-      require("telescope").load_extension("projects")
+      pcall(function()
+        require("telescope").load_extension("projects")
+      end)
     end,
   },
 
@@ -360,28 +414,32 @@ require("lazy").setup({
       vim.o.sessionoptions = "buffers,curdir,tabpages,winsize,help,globals,skiprtp,folds,localoptions"
 
       require("auto-session").setup({
-        log_level = "info",
+        log_level = "error",
         auto_session_enabled = true,
         auto_save_enabled = true,
         auto_restore_enabled = false,
-        auto_session_suppress_dirs = { "~/" },
+        auto_session_suppress_dirs = { "~/", "~/Downloads", "/" },
       })
     end,
   },
 
-  { "simrat39/rust-tools.nvim" },
+  { "simrat39/rust-tools.nvim", ft = "rust" },
 
-  -- NeoScroll
+  -- NeoScroll (silliq scroll)
   {
     "karb94/neoscroll.nvim",
+    event = "VeryLazy",
     config = function()
       require("neoscroll").setup()
-    end
+    end,
   },
 
   -- Neotest
   {
     "nvim-neotest/neotest",
+    lazy = true,
+    cmd = "Neotest",
+    keys = { "<leader>Tn", "<leader>Tf", "<leader>Ts", "<leader>To" },
     dependencies = neotest_config.dependencies,
     config = neotest_config.setup,
   },
@@ -392,7 +450,9 @@ require("lazy").setup({
     dependencies = { "nvim-telescope/telescope.nvim" },
     config = function()
       require("textcase").setup({})
-      require("telescope").load_extension("textcase")
+      pcall(function()
+        require("telescope").load_extension("textcase")
+      end)
     end,
     keys = {
       "ga",
@@ -405,62 +465,122 @@ require("lazy").setup({
       "TextCaseOpenTelescopeLSPChange",
       "TextCaseStartReplacingCommand",
     },
-    lazy = false,
   },
 
-  --- editorconfig
-  { "editorconfig/editorconfig-vim" },
+  -- editorconfig-vim OLIB TASHLANDI: Neovim 0.9+ da o'rnatilgan (vim.g.editorconfig)
 
   -- Render markdown
   {
-    'MeanderingProgrammer/render-markdown.nvim',
-    dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-mini/mini.nvim' },
+    "MeanderingProgrammer/render-markdown.nvim",
+    ft = { "markdown", "codecompanion" },
+    dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-mini/mini.nvim" },
     opts = {},
   },
+  { "nvim-mini/mini.nvim", lazy = true },
 
-  -- Diagnostics
+  -- Diagnostics (kursor turgan qatorda chiroyli xato matni)
   {
     "rachartier/tiny-inline-diagnostic.nvim",
-    event = "VeryLazy",
+    event = "LspAttach",
     priority = 1000,
     config = function()
-      require("tiny-inline-diagnostic").setup()
+      -- format: xato matnini ekranga chiqarishdan oldin o'zbekchaga tarjima
+      -- qiladi (:XatoTarjima bilan yoqiladi/o'chiriladi)
+      require("tiny-inline-diagnostic").setup({
+        options = {
+          format = require("nitro.core.diagnostics_uz").format,
+        },
+      })
       vim.diagnostic.config({ virtual_text = false })
     end,
   },
-
-  { "onsails/lspkind.nvim" },
 
   {
     "nvimdev/lspsaga.nvim",
     event = "LspAttach",
     config = function()
       require("lspsaga").setup({
-        ui = {
-          winbar = {
-            enabled = false,
-          },
-        },
-        lightbulb = {
-          enable = false,
-        },
+        ui = { winbar = { enabled = false } },
+        lightbulb = { enable = false },
+        symbol_in_winbar = { enable = false },
       })
-      vim.lsp.handlers["textDocument/hover"] =
-          require("lspsaga.hover").hover_handler
     end,
-
     dependencies = {
       "nvim-treesitter/nvim-treesitter",
       "nvim-tree/nvim-web-devicons",
     },
   },
 
-  -- Indent
+  -- Indent chiziqlari
   {
-    'nvimdev/indentmini.nvim',
-    event = 'BufEnter',
+    "nvimdev/indentmini.nvim",
+    event = { "BufReadPost", "BufNewFile" },
     config = function()
-      require('indentmini').setup()
+      require("indentmini").setup()
     end,
-  }
+  },
+
+  -- NitroVim AI Agent (Bionic / LM Studio Local AI)
+  {
+    dir = "d:/Projects/NitroVim AI Agent",
+    name = "nitro-ai",
+    cmd = {
+      "NitroAI",
+      "NitroAIChat",
+      "NitroAINewSession",
+      "NitroAISessions",
+      "NitroAIEdit",
+      "NitroAIFix",
+      "NitroAIExplain",
+      "NitroAIClear",
+      "NitroAIAbort",
+      "NitroAIProvider",
+      "NitroAIBionicStatus",
+    },
+    keys = {
+      { "<leader>aa", desc = "NitroAI: Chat" },
+      { "<leader>an", desc = "NitroAI: Yangi sessiya" },
+      { "<leader>as", desc = "NitroAI: Sessiyalar ro'yxati" },
+      { "<leader>ae", desc = "NitroAI: Kod tahrirlash", mode = { "n", "v" } },
+      { "<leader>af", desc = "NitroAI: LSP xatosini tuzatish" },
+      { "<leader>ax", desc = "NitroAI: Kodni tushuntirish", mode = { "n", "v" } },
+      { "<leader>ap", desc = "NitroAI: Provayder tanlash" },
+    },
+    config = function()
+      require("nitro-ai").setup({
+        provider = "bionic",
+        providers = {
+          bionic = {
+            endpoint = "http://127.0.0.1:1234/v1",
+            model = "qwen/qwen3.5-9b",
+          },
+        },
+      })
+    end,
+  },
+}, {
+  -- lazy.nvim ning o'z sozlamalari
+  defaults = { lazy = false },
+  install = { colorscheme = { "onedark", "habamax" } },
+
+  -- Config fayllarni doimiy kuzatib turishni o'chiramiz (Windows'da qimmat)
+  change_detection = { enabled = false },
+  checker = { enabled = false },
+
+  performance = {
+    cache = { enabled = true },
+    rtp = {
+      -- Keraksiz o'rnatilgan vim plugin'lari
+      disabled_plugins = {
+        "gzip",
+        "tarPlugin",
+        "zipPlugin",
+        "tohtml",
+        "tutor",
+        "rplugin",
+        "netrwPlugin",
+        "spellfile",
+      },
+    },
+  },
 })

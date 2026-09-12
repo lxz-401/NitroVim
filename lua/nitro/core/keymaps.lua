@@ -1,10 +1,27 @@
+-- ===========================================================================
+--  Keymap'lar
+--
+--  MUHIM tuzatish: ilgari <leader>f (format) va <leader>ff (fayl qidirish)
+--  ikkalasi ham bor edi. Shu sabab <leader>f bosilganda Neovim 400ms davomida
+--  "yana harf keladimi?" deb KUTIB turardi -> sekin ishlayotgandek tuyulardi.
+--  Endi <leader>f, <leader>t, <leader>g faqat PREFIX (o'zi hech nima qilmaydi).
+-- ===========================================================================
+
 local map = vim.keymap.set
 
--- File Explorer (NvimTree)
-map("n", "<leader>e", ":NvimTreeToggle<CR>", { noremap = true, silent = true, desc = "Toggle File Explorer" })
-map("n", "<leader>h", ":NvimTreeFocus<CR>", { noremap = true, silent = true, desc = "Focus File Explorer" })
+-- ------------------------------------------------------------------ Fayllar
+map("n", "<C-s>", "<cmd>write<CR>", { desc = "Saqlash" })
+map("i", "<C-s>", "<Esc><cmd>write<CR>", { desc = "Saqlash" })
+map("n", "<Esc>", "<cmd>nohlsearch<CR>", { desc = "Qidiruv belgisini o'chirish" })
 
--- Terminal (ToggleTerm)
+-- ------------------------------------------------------- File Explorer
+map("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { silent = true, desc = "Explorer ochish/yopish" })
+map("n", "<leader>h", "<cmd>NvimTreeFocus<CR>", { silent = true, desc = "Explorer'ga o'tish" })
+
+-- --------------------------------------------------------------- Terminal
+-- <leader>t bitta bosishda ishlashi uchun <leader>t bilan boshlanadigan
+-- BOSHQA hech qanday tugma bo'lmasligi kerak. Shu sabab test tugmalari
+-- <leader>T ga (katta T) ko'chirildi -- neotest.lua ga qarang.
 local function toggle_term_bottom()
   if vim.bo.filetype == "NvimTree" then
     vim.cmd("wincmd l")
@@ -12,55 +29,54 @@ local function toggle_term_bottom()
   vim.cmd("ToggleTerm direction=horizontal size=15")
 end
 
-map("n", "<leader>t", toggle_term_bottom, { noremap = true, silent = true, desc = "Toggle Terminal Bottom" })
+map("n", "<leader>t", toggle_term_bottom, { silent = true, desc = "Terminal ochish/yopish" })
 
-map("t", "<leader>t", function()
-  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
-  vim.cmd("ToggleTerm")
-  if vim.fn.bufexists("#") == 1 then
-    vim.cmd("wincmd p")
-  end
-end, { noremap = true, silent = true, desc = "Toggle Terminal Bottom" })
+-- Terminal ICHIDA <leader> ishlatilmaydi: leader -- bu probel, va shell'da
+-- "ls t" deb yozganda ham ishga tushib ketardi. Buning o'rniga:
+--   <Esc><Esc>  -> normal rejim (keyin Ctrl+k bilan tahrirlovchiga)
+--   <C-\>       -> terminalni yopish (toggleterm o'zi qo'yadi)
+map("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Terminal normal rejim" })
 
--- Terminal Focus Toggle
-map("n", "<leader>ft", function()
-  if vim.bo.filetype == "NvimTree" then
-    vim.cmd("wincmd l")
-  end
-  local term_buf = vim.fn.bufnr("term://")
-  if term_buf ~= -1 and vim.fn.bufwinnr(term_buf) ~= -1 then
-    vim.cmd("wincmd p")
-  else
-    vim.cmd("ToggleTerm direction=horizontal size=15")
-  end
-end, { noremap = true, silent = true, desc = "Toggle Terminal/Editor Focus" })
+-- ------------------------------------------------------------- Navigatsiya
+map("n", "<leader>w", "<cmd>wincmd p<CR>", { silent = true, desc = "Oldingi oynaga" })
+map("n", "<leader>k", "<cmd>bnext<CR>", { silent = true, desc = "Keyingi buffer" })
+map("n", "<leader>j", "<cmd>bprevious<CR>", { silent = true, desc = "Oldingi buffer" })
+map("n", "<leader>q", "<cmd>bdelete<CR>", { silent = true, desc = "Buffer'ni yopish" })
 
-map("t", "<leader>ft", function()
-  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
-  vim.cmd("wincmd p")
-end, { noremap = true, silent = true, desc = "Toggle Terminal/Editor Focus" })
+-- Oynalar orasida Ctrl + h/j/k/l
+map("n", "<C-h>", "<C-w>h", { desc = "Chapdagi oyna" })
+map("n", "<C-j>", "<C-w>j", { desc = "Pastdagi oyna" })
+map("n", "<C-k>", "<C-w>k", { desc = "Yuqoridagi oyna" })
+map("n", "<C-l>", "<C-w>l", { desc = "O'ngdagi oyna" })
 
--- Editor Navigation
-map("n", "<leader>g", ":wincmd p<CR>", { noremap = true, silent = true, desc = "Focus Editor" })
-map("n", "<leader>k", "<Cmd>bnext<CR>", { noremap = true, silent = true, desc = "Next Buffer" })
-map("n", "<leader>j", "<Cmd>bprevious<CR>", { noremap = true, silent = true, desc = "Previous Buffer" })
+-- ----------------------------------------------------------------- Trouble
+map("n", "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>", { desc = "Barcha xatolar" })
+map("n", "<leader>xX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", { desc = "Shu fayl xatolari" })
+map("n", "<leader>xL", "<cmd>Trouble loclist toggle<cr>", { desc = "Location list" })
+map("n", "<leader>xQ", "<cmd>Trouble qflist toggle<cr>", { desc = "Quickfix list" })
 
--- Trouble (Diagnostics & Lists)
-map("n", "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>", { desc = "Diagnostics (Trouble)" })
-map("n", "<leader>xX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", { desc = "Buffer Diagnostics (Trouble)" })
-map("n", "<leader>cs", "<cmd>Trouble symbols toggle focus=false<cr>", { desc = "Symbols (Trouble)" })
-map("n", "<leader>cl", "<cmd>Trouble lsp toggle focus=false win.position=right<cr>", { desc = "LSP Definitions / references / ..." })
-map("n", "<leader>xL", "<cmd>Trouble loclist toggle<cr>", { desc = "Location List (Trouble)" })
-map("n", "<leader>xQ", "<cmd>Trouble qflist toggle<cr>", { desc = "Quickfix List (Trouble)" })
+-- -------------------------------------------------------------------- Code
+map("n", "<leader>cf", function()
+  vim.lsp.buf.format({ async = true })
+end, { silent = true, desc = "Kodni formatlash" })
 
--- Code formatting
-map("n", "<leader>f", function()
-  vim.lsp.buf.format()
-end, { noremap = true, silent = true, desc = "Format Code" })
+map("n", "<leader>cs", "<cmd>Trouble symbols toggle focus=false<cr>", { desc = "Symbol'lar" })
+map("n", "<leader>cl", "<cmd>Trouble lsp toggle focus=false win.position=right<cr>", { desc = "LSP ma'lumot" })
+map("n", "<leader>ca", "<cmd>Lspsaga code_action<CR>", { desc = "Code action (tuzatish taklifi)" })
 
--- Lspsaga
-map("n", "K", "<cmd>Lspsaga hover_doc<CR>")
-map("n", "F", "<cmd>Lspsaga code_action<CR>")
-map("n", "gd", "<cmd>Lspsaga peek_definition<CR>")
-map("n", "gr", "<cmd>Lspsaga finder<CR>")
-map("n", "<leader>ca", "<cmd>Lspsaga code_action<CR>")
+-- ---------------------------------------------------------------- LSP / Saga
+-- gd native: Lspsaga peek_definition dan sezilarli tez
+map("n", "gd", vim.lsp.buf.definition, { silent = true, desc = "Ta'rifga o'tish" })
+map("n", "K", "<cmd>Lspsaga hover_doc<CR>", { silent = true, desc = "Hujjat (hover)" })
+map("n", "gr", "<cmd>Lspsaga finder<CR>", { silent = true, desc = "Qayerda ishlatilgan" })
+map("n", "F", "<cmd>Lspsaga code_action<CR>", { silent = true, desc = "Code action" })
+map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, { desc = "Oldingi xato" })
+map("n", "]d", function() vim.diagnostic.jump({ count = 1 }) end, { desc = "Keyingi xato" })
+
+-- ------------------------------------------------------------------ Tahrir
+-- Vizual rejimda qatorni yuqori/pastga surish
+map("v", "J", ":m '>+1<CR>gv=gv", { desc = "Qatorni pastga" })
+map("v", "K", ":m '<-2<CR>gv=gv", { desc = "Qatorni yuqoriga" })
+-- Indent'dan keyin tanlov saqlanib qolsin
+map("v", "<", "<gv", { desc = "Chapga surish" })
+map("v", ">", ">gv", { desc = "O'ngga surish" })

@@ -55,8 +55,34 @@ local function load_theme()
   return nil
 end
 
+-- Tema plugin'lari lazy yuklanadi. `nord` va `everforest` faqat vim.g
+-- o'zgaruvchilarini o'rnatadi (require qilinmaydi), shuning uchun ular
+-- avtomatik yuklanmaydi -> colorscheme buyrug'i "E185" xatosi beradi.
+-- Shu sabab har doim plugin'ni oldin majburan yuklaymiz.
+local theme_plugins = {
+  onedark     = "onedark.nvim",
+  monokai     = "monokai.nvim",
+  tokyonight  = "tokyonight.nvim",
+  gruvbox     = "gruvbox.nvim",
+  catppuccin  = "catppuccin",
+  dracula     = "dracula.nvim",
+  nord        = "nord.nvim",
+  everforest  = "everforest",
+  ["rose-pine"] = "rose-pine",
+}
+
+local function ensure_loaded(name)
+  local plugin = theme_plugins[name]
+  if not plugin then return end
+  pcall(function()
+    require("lazy").load({ plugins = { plugin } })
+  end)
+end
+
 local function apply_theme(theme, save)
   local transparent = false
+
+  ensure_loaded(theme.name)
 
   if theme.name == "onedark" then
     require("onedark").setup({ style = theme.variant, transparent = transparent })

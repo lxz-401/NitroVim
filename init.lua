@@ -1,4 +1,14 @@
+-- ===========================================================================
+--  NitroVim
+-- ===========================================================================
+
+-- Lua modul kesh (bytecode cache). Startup'ni 20-30% tezlashtiradi.
+if vim.loader then
+  vim.loader.enable()
+end
+
 require("nitro.core.options")
+require("nitro.core.perf")
 require("nitro.core.keymaps")
 require("nitro.core.filetypes")
 require("nitro.core.diagnostics")
