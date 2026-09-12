@@ -3,330 +3,335 @@
 <h3 align="center">A modern, blazing-fast Neovim distribution designed for an exceptional development experience.</h3>
 
 <p align="center">
-  <a href="https://github.com/NitroVim/NitroVim/stargazers">
-    <img src="https://img.shields.io/github/stars/NitroVim/NitroVim?style=for-the-badge&color=yellow" alt="Stars" />
+  <a href="https://github.com/lxz-401/NitroVim/stargazers">
+    <img src="https://img.shields.io/github/stars/lxz-401/NitroVim?style=for-the-badge&color=yellow" alt="Stars" />
   </a>
-  <a href="https://github.com/NitroVim/NitroVim/network/members">
-    <img src="https://img.shields.io/github/forks/NitroVim/NitroVim?style=for-the-badge&color=blue" alt="Forks" />
+  <a href="https://github.com/lxz-401/NitroVim/network/members">
+    <img src="https://img.shields.io/github/forks/lxz-401/NitroVim?style=for-the-badge&color=blue" alt="Forks" />
   </a>
-  <a href="https://github.com/NitroVim/NitroVim/issues">
-    <img src="https://img.shields.io/github/issues/NitroVim/NitroVim?style=for-the-badge&color=orange" alt="Issues" />
+  <a href="https://github.com/lxz-401/NitroVim/issues">
+    <img src="https://img.shields.io/github/issues/lxz-401/NitroVim?style=for-the-badge&color=orange" alt="Issues" />
   </a>
-  <a href="https://github.com/NitroVim/NitroVim/pulls">
-    <img src="https://img.shields.io/github/issues-pr/NitroVim/NitroVim?style=for-the-badge&color=purple" alt="Pull Requests" />
+  <a href="https://github.com/lxz-401/NitroVim/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/lxz-401/NitroVim?style=for-the-badge&color=success" alt="License" />
   </a>
-  <a href="https://github.com/NitroVim/NitroVim/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/NitroVim/NitroVim?style=for-the-badge&color=success" alt="License" />
+  <a href="https://github.com/lxz-401/NitroVim">
+    <img src="https://img.shields.io/github/repo-size/lxz-401/NitroVim?style=for-the-badge&color=red" alt="Repo Size" />
   </a>
-  <a href="https://github.com/NitroVim/NitroVim/releases/latest">
-    <img src="https://img.shields.io/github/v/release/NitroVim/NitroVim?style=for-the-badge&color=brightgreen" alt="Latest Release" />
-  </a>
-  <a href="https://github.com/NitroVim/NitroVim">
-    <img src="https://img.shields.io/github/repo-size/NitroVim/NitroVim?style=for-the-badge&color=red" alt="Repo Size" />
-  </a>
-
 </p>
 
-## Problem & Solution
+> **This is a fork of [NitroVim/NitroVim](https://github.com/NitroVim/NitroVim)**, tuned for
+> Python / Java / React work on Windows. See [What's different in this fork](#whats-different-in-this-fork).
 
-**Problem:**
-There are many excellent Neovim distributions available, but most require extensive configuration to get a smooth, modern development experience. This setup process can be time-consuming and frustrating, especially for newcomers.
+## What's different in this fork
 
-**Solution:**
-**NitroVim** comes pre-configured with:
+The upstream config froze on almost every keystroke in a large project. The cause was a loop
+between two settings: autosave fired on `TextChanged`, so every character wrote the file, and
+`BufWritePre` ran `vim.lsp.buf.format({ async = false })`, which blocks Neovim until the language
+server replies.
 
-* Fast startup with lazy-loaded plugins
-* Modern UI with 20+ themes and transparency support
-* Built-in LSP, fuzzy finder, git integration, and more
-* Smart defaults for keybindings and code navigation
+That, and a few other things, are fixed here.
 
-With NitroVim, you get a **ready-to-use, blazing-fast Neovim setup** without spending hours configuring plugins and settings. Just install, and start coding.
+| Area | Before | Now |
+| --- | --- | --- |
+| Autosave | Wrote on every keystroke, each write ran a **blocking** LSP format | Debounced to 1.5s; autosave never formats. Format runs only on an explicit write, with a 1s timeout |
+| Treesitter | Plugin on the `main` branch while the config used the `master` API, so `ensure_installed` / `highlight` / `indent` were silently ignored and **no parser was ever installed** | Pinned to `master`, 27 parsers installed, `max_jobs = 1` (concurrent `zig cc` jobs deadlock on Windows) |
+| LSP file watching | Servers watched every file under `node_modules` / `.venv` | `didChangeWatchedFiles` disabled |
+| Pyright | Analysed the whole project | `diagnosticMode = "openFilesOnly"` |
+| ESLint | Ran on every change | Runs on save |
+| Plugin loading | All ~60 plugins loaded at startup | Lazy-loaded by filetype / command / key |
+| Git blame | A `git blame` process on every cursor stop | Off by default, toggle with `<leader>gb` |
+| Cursor animation | 200 FPS redraw | 60 FPS |
+| Large files | No protection | Highlighting, LSP and diagnostics switch off above 512 KB or on very long lines |
+| Startup | ~1150 ms | **~230 ms** |
+
+### Added
+
+- **`:Run` (`<leader>rr`)** - compiles and runs the current file: C, C++, Python, Java, JavaScript, TypeScript, Rust, C#
+- **Uzbek diagnostics** - LSP error messages translated to Uzbek, toggled with `:XatoTarjima`. The rules were written against the real messages emitted by clangd, pyright and ts_ls
+- **`jdtls`** - Java language server (upstream had none)
+- **Large-file guard** (`lua/nitro/core/perf.lua`)
+- **PowerShell 7** as the shell, using the recipe from `:help shell-pwsh`
+
+### Fixed
+
+- `nvim-tree` only accepted `\` as a path separator on Windows, so creating `src/utils/` failed with *"Couldn't create file"*. Forward slashes are now normalised.
+- Keys that were both a command and a prefix (`<leader>f`, `<leader>t`, `<leader>g`, `<leader>r`) caused a 400 ms wait on every press. Format moved to `<leader>cf`, tests to `<leader>T`.
+- `nvim-tree` config was duplicated three times (520 lines) - collapsed into one table.
+- Removed `auto-save.nvim` (duplicated a built-in autocmd) and `editorconfig-vim` (built into Neovim 0.9+).
 
 ## Table of Contents
 
-- [Features](#-features)
-- [Keybindings](#-keybindings)
-- [Installation](#-installation)
-- [Documentation](#-documentation)
-- [Plugins](#-plugins)
-- [Language Support](#-language-support)
-- [Customization](#-customization)
-- [Troubleshooting](#-troubleshooting)
+- [Features](#features)
+- [Keybindings](#keybindings)
+- [Commands](#commands)
+- [Installation](#installation)
+- [Plugins](#plugins)
+- [Language Support](#language-support)
+- [Customization](#customization)
+- [Troubleshooting](#troubleshooting)
 
 ## Features
 
 - **LSP Integration** - Native language server support
 - **Smart Completion** - Context-aware suggestions
-- **Fuzzy Finding** - Quick file and text search
+- **Fuzzy Finding** - Quick file and text search with `ripgrep` / `fd`
 - **File Explorer** - Tree-style project navigation
 - **20+ Themes** - With transparency support
-- **Lazy Loading** - Fast startup times
+- **Lazy Loading** - Plugins load on demand, not at startup
 - **Git Integration** - Built-in source control
-- **Plugin System** - Extensible architecture
-- **Transparent UI** — Adjustable window and panel opacity for seamless desktop blending
-## ⌨ Keybindings
+- **Run & Debug** - One key to compile and run, DAP for stepping
+- **Transparent UI** - Adjustable window and panel opacity
 
-### General
+## Keybindings
 
-| Key          | Action               |
-| ------------ | -------------------- |
-| `<Space>`    | Leader key           |
-| `<C-\>`      | Toggle terminal      |
-| `<leader>lg` | Open Lazygit         |
-| `<C-n>`      | Toggle file explorer |
-| `<C-p>`      | Find files           |
-| `<leader>ff` | Fuzzy finder         |
+Leader key is `<Space>`. Press the keys **one after another**, not together:
+`<leader>ff` means Space, then f, then f.
+
+### Files & windows
+
+| Key | Action |
+| --- | --- |
+| `<leader>e` | Toggle file explorer |
+| `<leader>o` / `<leader>h` | Focus file explorer |
+| `<leader>n` | Reveal current file in the tree |
+| `<leader>er` | Refresh the tree |
+| `<C-s>` | Save |
+| `<leader>q` | Close buffer |
+| `<leader>k` / `<leader>j` | Next / previous buffer |
+| `<leader>w` | Back to the previous window |
+| `<C-h>` `<C-j>` `<C-k>` `<C-l>` | Move between windows |
+| `<Esc>` | Clear search highlight |
+
+Inside the file explorer: `a` new file (end with `/` for a folder, `src/utils/a.py` creates both),
+`d` delete, `r` rename, `x`/`c` then `p` move/copy, `U` show hidden folders, `g?` full key list.
+
+### Search - Telescope
+
+| Key | Action |
+| --- | --- |
+| `<leader>ff` | Find files |
+| `<leader>fg` | Live grep across the project |
+| `<leader>fw` | Search the word under the cursor |
+| `<leader>fb` | Open buffers |
+| `<leader>fo` | Recent files |
+| `<leader>fs` | Symbols in this file |
+| `<leader>fd` | All diagnostics |
+| `<leader>fh` | Help tags |
 
 ### LSP
 
-| Key          | Action           |
-| ------------ | ---------------- |
-| `gd`         | Go to definition |
-| `gr`         | Show references  |
-| `K`          | Show hover       |
-| `<leader>ca` | Code actions     |
-| `<leader>rn` | Rename symbol    |
-
-### Navigation
-
-| Key       | Action          |
-| --------- | --------------- |
-| `<C-h>`   | Window left     |
-| `<C-j>`   | Window down     |
-| `<C-k>`   | Window up       |
-| `<C-l>`   | Window right    |
-| `<leader>l`   | Next buffer     |
-| `<leader>k` | Previous buffer |
+| Key | Action |
+| --- | --- |
+| `gd` | Go to definition |
+| `K` | Hover documentation |
+| `gr` | Find references |
+| `gi` / `gD` / `gt` | Implementation / declaration / type definition |
+| `<leader>ca` or `F` | Code action |
+| `<leader>rn` | Rename symbol |
+| `<leader>cf` | Format document |
+| `]d` / `[d` | Next / previous diagnostic |
+| `<leader>xx` | All diagnostics (Trouble) |
+| `<leader>xX` | Diagnostics in this file |
+| `<leader>cs` / `<leader>cl` | Symbols / LSP info (Trouble) |
+| `<C-Space>` | Trigger completion |
+| `<Tab>` / `<C-k>` | Next completion item / jump in snippet |
 
 ### Code
 
-| Key         | Action              |
-| ----------- | ------------------- |
-| `gcc`       | Toggle comment      |
-| `<leader>f` | Format document     |
-| `]d`        | Next diagnostic     |
-| `[d`        | Previous diagnostic |
+| Key | Action |
+| --- | --- |
+| `gcc` | Toggle comment on the current line |
+| `gc` | Toggle comment on a selection or motion |
+| `ggVG` then `gc` | Comment the whole file |
+| `<leader>rr` | **Run the current file** |
+| `ga.` | Change case (camelCase / snake_case / ...) |
 
-## Theme & Appearance
+### Terminal
 
-| Command               | Description              |
-| --------------------- | ------------------------ |
-| `:TransparentEnable`  | Enable transparency      |
-| `:TransparentDisable` | Disable transparency     |
-| `:TransparentToggle`  | Toggle transparency      |
-| `:ThemeSwitch`        | Open theme switcher menu |
+| Key | Action |
+| --- | --- |
+| `<leader>t` | Toggle a terminal at the bottom |
+| `<C-\>` | Floating terminal |
+| `<Esc><Esc>` | Leave terminal mode |
+| `<leader>lg` | Lazygit |
 
-## Documentation
+### Git
 
-Detailed documentation can be found in the [docs](./docs) directory:
+| Key | Action |
+| --- | --- |
+| `]h` / `[h` | Next / previous hunk |
+| `<leader>gp` | Preview hunk |
+| `<leader>gr` | Reset hunk |
+| `<leader>gb` | Toggle line blame |
 
-- [Keymaps](./docs/keymaps.md) - Full list of shortcuts
-- [Commands](./docs/commands.md) - Custom user commands
-- [Plugins](./docs/plugins.md) - Plugin overview and configuration
-- [Features](./docs/features.md) - AI Chat, Debugging, and more
-- [Customization](./docs/customization.md) - How to extend NitroVim
+### Tests & debugging
 
-## Learning & Documentation
+| Key | Action |
+| --- | --- |
+| `<leader>Tn` | Run nearest test |
+| `<leader>Tf` | Run all tests in the file |
+| `<leader>Ts` / `<leader>To` | Test summary / output |
+| `F5` | Start / continue debugging |
+| `F10` / `F11` / `F12` | Step over / into / out |
+| `<leader>db` / `<leader>dB` | Toggle / clear breakpoints |
 
-| Command       | Description                      |
-| ------------- | -------------------------------- |
-| `:NitroLearn` | Open NitroVim learning dashboard |
-| `:Dashboard`  | Open NitroVim start screen       |
+## Commands
 
-## 🛠️ Installation
+### Running code
+
+| Command | Description |
+| --- | --- |
+| `:Run` | Compile and run the current file (same as `<leader>rr`) |
+
+### Performance & diagnostics
+
+| Command | Description |
+| --- | --- |
+| `:NitroPerf` | Size, LSP clients, treesitter and large-file state of the current buffer |
+| `:NitroLspInfo` | Which language servers are enabled, which are missing |
+| `:NitroFormatToggle` | Turn format-on-save on/off globally |
+| `:NitroNoFormat` | Turn format-on-save off for this buffer only |
+| `:NitroAutoSave on\|off` | Turn autosave on/off |
+| `:XatoTarjima on\|off` | Uzbek / English diagnostic messages |
+| `:XatoAsl` | Show the original English text of this file's diagnostics |
+
+### Shell
+
+The shell is PowerShell 7. One exception: `:TSInstallSync` depends on `cmd` syntax and fails under
+PowerShell. Plain `:TSInstall` does not go through the shell and works fine.
+
+| Command | Description |
+| --- | --- |
+| `:UseCmdShell` | Switch to `cmd.exe` temporarily |
+| `:UsePowerShell` | Switch back |
+
+### UI & project
+
+| Command | Description |
+| --- | --- |
+| `:ThemeSwitch` | Theme picker with live preview (`Tab` to preview) |
+| `:TransparentToggle` | Toggle transparency |
+| `:FileExplorer left\|right\|center` | Move the file tree |
+| `:MkDir <path>` | Create a folder |
+| `:VTerm <n>` | Open n terminals |
+| `:CloseAllBuffers` | Close every buffer except the current one |
+| `:NitroLearn` | Vim cheat sheet |
+| `:Tutor` | Official interactive Vim tutorial |
+
+## Installation
 
 ### Prerequisites
 
-- [Neovim](https://github.com/neovim/neovim/blob/master/INSTALL.md) >= 0.8.0
+- [Neovim](https://github.com/neovim/neovim/blob/master/INSTALL.md) **>= 0.11** (tested on 0.12) - this fork uses `vim.lsp.config` / `vim.lsp.enable` and `vim.diagnostic.jump`
 - [Git](https://git-scm.com/downloads)
-- [Node.js](https://nodejs.org/en/download) >= 14 (for LSP)
-- [A Nerd Font](https://www.nerdfonts.com/font-downloads)
-- [Lazygit](https://github.com/jesseduffield/lazygit) (for git integration)
+- [Node.js](https://nodejs.org/en/download) >= 18 - required by several language servers
+- **A C compiler** - treesitter builds parsers from source. `gcc`, `clang`, `cl` or `zig` all work
+- [ripgrep](https://github.com/BurntSushi/ripgrep) and [fd](https://github.com/sharkdp/fd) - for Telescope search
+- [A Nerd Font](https://www.nerdfonts.com/font-downloads) - otherwise icons show as boxes
+- [Lazygit](https://github.com/jesseduffield/lazygit) (optional, for `<leader>lg`)
 
-#### Installing Lazygit
+### Windows (PowerShell)
 
-**Windows (using winget)**:
-
-```powershell
-winget install jesseduffield.lazygit
-```
-
-**Windows (using Chocolatey)**:
-
-```powershell
-choco install lazygit
-```
-
-**Windows (using Scoop)**:
-
-```powershell
-scoop install lazygit
-```
-
-**macOS**:
-
-```bash
-brew install lazygit
-```
-
-**Linux (using snap)**:
-
-```bash
-snap install lazygit
-```
-
-**Linux (using pacman)**:
-
-```bash
-pacman -S lazygit
-```
-
-**Manual Installation**:
-Download the latest release from [Lazygit Releases](https://github.com/jesseduffield/lazygit/releases)
-
-### Windows (Powershell)
-
-#### Install Neovim
 ```powershell
 winget install Neovim.Neovim
+winget install BurntSushi.ripgrep.MSVC
+winget install sharkdp.fd
+winget install BrechtSanders.WinLibs.POSIX.UCRT   # gcc / g++ for treesitter and :Run
+winget install JesseDuffield.lazygit              # optional
+
+git clone https://github.com/lxz-401/NitroVim "$env:LOCALAPPDATA\nvim"
 ```
 
-#### OR with Chocolatey
-
-```powershell
-choco install neovim
-```
-
-#### Clone NitroVim
-
-```powershell
-git clone https://github.com/NitroVim/NitroVim "$env:LOCALAPPDATA\nvim"
-```
-
-### Linux/macOS
+### Linux / macOS
 
 ```bash
-git clone https://github.com/NitroVim/NitroVim ~/.config/nvim
+git clone https://github.com/lxz-401/NitroVim ~/.config/nvim
+```
+
+### First launch
+
+Open `nvim`. Plugins install automatically, then treesitter parsers compile in the background -
+this takes a few minutes the first time. After that, check everything with:
+
+```vim
+:checkhealth
+:NitroLspInfo
 ```
 
 ## Plugins
 
-Core plugins included:
-
-- nvim-tree (File explorer)
-- telescope.nvim (Fuzzy finder)
+- nvim-tree (file explorer)
+- telescope.nvim (fuzzy finder)
 - mason.nvim (LSP installer)
-- nvim-cmp (Completion)
-- treesitter (Syntax)
-- toggleterm (Terminal)
-- gitsigns (Git integration)
-- bufferline (Tab management)
-- lualine (Status line)
-- noice.nvim (UI improvements)
-- project.nvim (Project management)
-- auto-session (Session management)
+- nvim-cmp + LuaSnip (completion and snippets)
+- nvim-treesitter (syntax, `master` branch)
+- toggleterm (terminal)
+- gitsigns (git)
+- bufferline / lualine (tabs and status line)
+- noice.nvim (UI)
+- trouble.nvim (diagnostics list)
+- neotest + nvim-dap (tests and debugging)
+- project.nvim / auto-session (projects and sessions)
 
 ## Language Support
 
-Built-in support for:
-
-- JavaScript/TypeScript
-- Python
-- C#/.NET
-- C/C++
-- Rust
-- HTML/CSS
-- React/Next.js
-- Lua
-- Markdown
-- JSON/YAML
-- And more...
+| Language | Server | Run with `<leader>rr` |
+| --- | --- | --- |
+| C / C++ | clangd | yes (`gcc` / `g++`) |
+| Python | pyright (+ ruff if installed) | yes |
+| Java | jdtls | yes (`javac` + `java`) |
+| JavaScript / TypeScript / React | ts_ls, eslint, tailwindcss, emmet | yes (`node` / `tsx`) |
+| Rust | rust_analyzer | yes (`cargo` or `rustc`) |
+| C# / .NET | csharp_ls | yes (`dotnet run`) |
+| HTML / CSS / JSON | html, cssls, jsonls | - |
+| Lua | lua_ls | yes |
 
 ## Customization
 
-For detailed instructions on personalizing NitroVim, see the [Customization Guide](./docs/customization.md).
+### Adding plugins
 
-### Adding Plugins
-
-Edit `lua/nitro/plugins/plugins.lua`:
+Edit `lua/nitro/plugins/plugins.lua`. Give every plugin a loading trigger so startup stays fast:
 
 ```lua
-require("lazy").setup({
-  -- Add your plugins here
-  { "author/plugin-name" },
-})
+{
+  "author/plugin-name",
+  ft = "python",        -- or: event = ..., cmd = ..., keys = ...
+  opts = {},
+}
 ```
 
-### Changing Settings
+### Changing settings
 
-Edit `lua/nitro/core/options.lua`:
+`lua/nitro/core/options.lua`
+
+### Custom keymaps
+
+`lua/nitro/core/keymaps.lua`. Do not add a key that starts with an existing single key -
+`<leader>t` and `<leader>tx` together make Neovim wait 400 ms on every `<leader>t`.
+
+### Adding a diagnostic translation
+
+Run `:XatoAsl` to see the original English message, then add a rule to
+`lua/nitro/core/diagnostics_uz.lua`:
 
 ```lua
-vim.opt.option_name = value
+{ "[Ee]xpected ';' after expression", "bu yerda ';' qo'yilmagan" },
 ```
-
-### Custom Keymaps
-
-Edit `lua/nitro/core/keymaps.lua`:
-
-```lua
-vim.keymap.set('mode', 'key', 'action')
-```
-
-## Screenshots
-
-#### Dashboard
-<img width="1896" height="1023" alt="image" src="https://github.com/user-attachments/assets/e3ae58b0-d83a-4d55-b1ee-bbf6bea4f46f" />
-
-#### Editor
-<img width="1896" height="1023" alt="image" src="https://github.com/user-attachments/assets/1fff5f73-6eaf-435b-8daa-824ab6a76450" />
-
-#### Fuzzy Finder
-<img width="1896" height="1023" alt="image" src="https://github.com/user-attachments/assets/a50b22f4-da3c-4592-8b2c-5032f9904e70" />
-
-#### LazyGit
-<img width="1896" height="1023" alt="image" src="https://github.com/user-attachments/assets/a62292d7-20ba-4002-ad4b-19f33274a523" />
-
-#### 20+ Themes
-<img width="1896" height="1023" alt="image" src="https://github.com/user-attachments/assets/cf3312b0-04dd-4d87-9dd4-d74825808a26" />
-
-#### Transparency
-<img width="1896" height="1023" alt="image" src="https://github.com/user-attachments/assets/e709e45d-7e64-42f0-a8ee-2446e56b3277" />
 
 ## Troubleshooting
 
-1. Run health checks:
+| Problem | Check |
+| --- | --- |
+| Icons show as boxes | Install a Nerd Font and select it in your terminal |
+| No completion / no errors shown | `:NitroLspInfo`, then `:Mason` to install what's missing |
+| No syntax colours | `:TSInstall <language>`, one at a time |
+| Editor feels slow | `:NitroPerf` for this file, `:Lazy profile` for startup |
+| Saving is slow | `:NitroFormatToggle` - if that fixes it, the formatter is the cause |
+| `:TSInstall` hangs | Install parsers one at a time; concurrent compiler jobs deadlock on Windows |
+| Still slow on Windows | Use Windows Terminal, and exclude your project folder and `%LOCALAPPDATA%\nvim-data` from Windows Defender |
 
-```vim
-:checkhealth
-```
+## Credits
 
-2. Update plugins:
-
-```vim
-:Lazy update
-```
-
-3. Common issues:
-
-   - Icons not showing? Install a Nerd Font
-   - LSP not working? Run `:Mason` to install servers
-   - Slow startup? Check `:Lazy profile`
-
-4. Reporting Issues:
-   If you encounter any problems:
-   1. Check the [existing issues](https://github.com/NitroVim/NitroVim/issues) first
-   2. [Open a new issue](https://github.com/NitroVim/NitroVim/issues/new) with:
-      - NitroVim version (`git rev-parse HEAD` in your config directory)
-      - Neovim version (`:version`)
-      - Operating system
-      - Steps to reproduce
-      - Expected vs actual behavior
-      - Screenshots/error messages if applicable
-      - Relevant config files or changes you made
-
-## Performance
-
-- Startup Time: ~50ms
-- Memory Usage: ~100MB
-- Lazy-loaded plugins: 80%
+Forked from [NitroVim/NitroVim](https://github.com/NitroVim/NitroVim) by the original authors.
+Licensed under the same terms - see [LICENSE](./LICENSE).

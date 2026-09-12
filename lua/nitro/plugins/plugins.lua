@@ -521,9 +521,17 @@ require("lazy").setup({
   },
 
   -- NitroVim AI Agent (Bionic / LM Studio Local AI)
+  --
+  -- Bu MAHALLIY plugin -- repo ichida emas, alohida papkada turadi.
+  -- `enabled` bo'lmasa, repo klon qilingan boshqa kompyuterda lazy.nvim
+  -- "papka topilmadi" xatosini berardi. Endi papka bo'lmasa, plugin
+  -- ro'yxatdan butunlay chiqib ketadi va config bemalol ishlayveradi.
   {
     dir = "d:/Projects/NitroVim AI Agent",
     name = "nitro-ai",
+    enabled = function()
+      return (vim.uv or vim.loop).fs_stat("d:/Projects/NitroVim AI Agent") ~= nil
+    end,
     cmd = {
       "NitroAI",
       "NitroAIChat",
