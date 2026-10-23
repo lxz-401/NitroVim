@@ -262,16 +262,18 @@ vim.keymap.set("n", "<leader>n", "<cmd>NvimTreeFindFile<CR>",
 vim.keymap.set("n", "<leader>o", "<cmd>NvimTreeFocus<CR>",
   vim.tbl_extend("force", opts, { desc = "Explorer'ga o'tish" }))
 
-vim.cmd([[
-  highlight NvimTreeNormal guibg=NONE ctermbg=NONE
-  highlight NvimTreeNormalNC guibg=NONE ctermbg=NONE
-  highlight NvimTreeGitNew guifg=#3EEA4D
-  highlight NvimTreeGitDeleted guifg=#F44747
-  highlight NvimTreeGitDirty guifg=#F0A500
-  highlight NvimTreeLiveFilterPrefix guifg=#FFFFFF guibg=#5E81AC gui=bold
-  highlight NvimTreeLiveFilterValue guifg=#ECEFF4 guibg=#434C5E gui=bold,italic
-  highlight NvimTreeLiveFilterBorder guifg=#5E81AC guibg=NONE gui=bold
-]])
+if vim.g.colors_name ~= "nothingos" then
+  vim.cmd([[
+    highlight NvimTreeNormal guibg=NONE ctermbg=NONE
+    highlight NvimTreeNormalNC guibg=NONE ctermbg=NONE
+    highlight NvimTreeGitNew guifg=#3EEA4D
+    highlight NvimTreeGitDeleted guifg=#F44747
+    highlight NvimTreeGitDirty guifg=#F0A500
+    highlight NvimTreeLiveFilterPrefix guifg=#FFFFFF guibg=#5E81AC gui=bold
+    highlight NvimTreeLiveFilterValue guifg=#ECEFF4 guibg=#434C5E gui=bold,italic
+    highlight NvimTreeLiveFilterBorder guifg=#5E81AC guibg=NONE gui=bold
+  ]])
+end
 
 -- `nvim <papka>` bilan ochilganda daraxtni ko'rsatish
 vim.api.nvim_create_autocmd("VimEnter", {

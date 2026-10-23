@@ -1,4 +1,5 @@
 local themes = {
+  { name = "nothingos", variant = "dark" },
   { name = "onedark", variant = "darker" },
   { name = "onedark", variant = "cool" },
   { name = "onedark", variant = "warm" },

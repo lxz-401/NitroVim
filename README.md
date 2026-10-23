@@ -23,6 +23,17 @@
 > **This is a fork of [NitroVim/NitroVim](https://github.com/NitroVim/NitroVim)**, tuned for
 > Python / Java / React work on Windows. See [What's different in this fork](#whats-different-in-this-fork).
 
+## NothingOS theme
+
+The default theme now matches the [NothingOS desktop](https://github.com/lxz-401/nothingos-gnome-manjaro):
+charcoal backgrounds, white text and mint accents, with matching Telescope,
+file explorer, buffer bar, notifications and statusline. Syntax and diagnostics
+keep distinct colors for readability. No extra theme plugin is required.
+
+Use `:ThemeSwitch` to select `nothingos (dark)` or return to a previous theme.
+Transparency remains optional through `:TransparentEnable` / `:TransparentDisable`.
+See [NothingOS customization](docs/nothingos-theme.md) for palette and restore details.
+
 ## What's different in this fork
 
 The upstream config froze on almost every keystroke in a large project. The cause was a loop

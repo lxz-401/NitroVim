@@ -4,6 +4,15 @@ if not ok then
   return
 end
 
+local function clear_panels()
+  for _, prefix in ipairs({ "BufferLine", "NvimTree", "ToggleTerm", "lualine" }) do
+    pcall(transparent.clear_prefix, prefix)
+  end
+  for _, group in ipairs({ "BufferLineOffset", "BufferLineOffsetSeparator" }) do
+    vim.api.nvim_set_hl(0, group, { bg = "NONE", ctermbg = "NONE" })
+  end
+end
+
 require("transparent").setup({
   groups = {
     "Normal", "NormalNC", "Comment", "Constant", "Special", "Identifier",
@@ -62,18 +71,8 @@ require("transparent").setup({
     "lualine_a_normal", "lualine_a_insert", "lualine_a_visual", "lualine_a_replace", "lualine_a_command",
     "lualine_a_terminal"
   },
-  on_clear = function() end,
+  on_clear = clear_panels,
 })
-
-pcall(transparent.clear_prefix, "BufferLine")
-pcall(transparent.clear_prefix, "NvimTree")
-pcall(transparent.clear_prefix, "ToggleTerm")
-pcall(transparent.clear_prefix, "lualine")
-
-local buffer_offset_groups = { "BufferLineOffset", "BufferLineOffsetSeparator" }
-for _, group in ipairs(buffer_offset_groups) do
-  pcall(vim.api.nvim_set_hl, 0, group, { bg = "NONE", ctermbg = "NONE" })
-end
 
 local state_file = vim.fn.stdpath("state") .. "/transparent_state.txt"
 
